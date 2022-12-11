@@ -1,0 +1,57 @@
+version: "3"
+
+services: 
+  migration:
+    build: migration
+    container_name: migration
+    restart: on-failure
+    env_file:
+      - ./.env
+    networks:
+      - db-net
+    depends_on:
+      - database
+    links:
+      - database
+
+  database:
+    image: mysql
+    container_name: database
+    ports: 
+      - '3306:3306'
+    restart: always
+    env_file:
+      - ./.env
+    networks:
+      db-net:
+        ipv4_address: '192.168.0.3'
+
+  web-api:
+    build: web-api
+    container_name: web-api
+    stop_signal: KILL
+    networks:
+      db-net:
+        ipv4_address: '192.168.0.55'
+    volumes:
+      - ./web-api:/app
+    env_file:
+      - ./.env
+    restart: always
+    depends_on:
+      - database
+      - migration
+    links:
+      - database
+
+networks:
+  db-net:
+    name: db-net
+    driver: macvlan
+    driver_opts:
+      parent: enp3s0f1
+    ipam:
+      config:
+        - subnet: "192.168.0.0/24"
+          ip_range: "192.168.0.64/26"
+          gateway: "192.168.0.100"
